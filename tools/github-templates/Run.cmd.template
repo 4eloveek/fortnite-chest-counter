@@ -1,0 +1,12 @@
+@echo off
+setlocal
+set "APP=%~dp0{{EXE}}"
+if not exist "%APP%" set "APP=%~dp0release\v{{VERSION}}-win-x64\{{EXE}}"
+if not exist "%APP%" set "APP=%~dp0dist\FortniteChestCounter\FortniteChestCounter.exe"
+if not exist "%APP%" (
+    echo The app is missing. Run Build.cmd or tools\build-release.ps1 first.
+    pause
+    exit /b 1
+)
+for %%I in ("%APP%") do start "" /D "%%~dpI" "%APP%"
+exit /b 0

@@ -1,0 +1,124 @@
+{
+    "schemaVersion":  1,
+    "packages":  [
+                     {
+                         "id":  "Microsoft.AspNetCore.App.Runtime.win-x64",
+                         "version":  "10.0.15",
+                         "file":  "microsoft.aspnetcore.app.runtime.win-x64.10.0.15.nupkg",
+                         "sha256":  "d2a18c23269c91106c7d87695600f7fc25d56672dcdb9c59ed947f8f71611a72",
+                         "bytes":  12795364
+                     },
+                     {
+                         "id":  "Microsoft.CodeCoverage",
+                         "version":  "17.14.1",
+                         "file":  "microsoft.codecoverage.17.14.1.nupkg",
+                         "sha256":  "7fc432b46f06bd1a0fe3baced8a1269c32f1229c9eb1aab6e931630dd5b8d06b",
+                         "bytes":  9755080
+                     },
+                     {
+                         "id":  "Microsoft.NET.Test.Sdk",
+                         "version":  "17.14.1",
+                         "file":  "microsoft.net.test.sdk.17.14.1.nupkg",
+                         "sha256":  "9995330c5bc5a7bc759caadc9d17748616cdbb983c11062df122a74607614ff0",
+                         "bytes":  39629
+                     },
+                     {
+                         "id":  "Microsoft.NETCore.App.Runtime.win-x64",
+                         "version":  "10.0.15",
+                         "file":  "microsoft.netcore.app.runtime.win-x64.10.0.15.nupkg",
+                         "sha256":  "7423f58917342b9e4bf276fb164d5726d2c90fe2fe989c552b9e39056256a035",
+                         "bytes":  39989758
+                     },
+                     {
+                         "id":  "Microsoft.TestPlatform.ObjectModel",
+                         "version":  "17.14.1",
+                         "file":  "microsoft.testplatform.objectmodel.17.14.1.nupkg",
+                         "sha256":  "40c7fa3bec34213fb5e8caf3a3bc27f8ddb47f72f5fe60e1b3faa3984a35ad8b",
+                         "bytes":  1657190
+                     },
+                     {
+                         "id":  "Microsoft.TestPlatform.TestHost",
+                         "version":  "17.14.1",
+                         "file":  "microsoft.testplatform.testhost.17.14.1.nupkg",
+                         "sha256":  "d5cc4759cbc7443ee8ad0dc41043cfc55184913a71a26d7fce82020bd4889c9b",
+                         "bytes":  3167820
+                     },
+                     {
+                         "id":  "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+                         "version":  "10.0.15",
+                         "file":  "microsoft.windowsdesktop.app.runtime.win-x64.10.0.15.nupkg",
+                         "sha256":  "a036c174bac57a716e21dedccf96459804e4d8d8c31a08e3a8de649bf7684497",
+                         "bytes":  39196103
+                     },
+                     {
+                         "id":  "Newtonsoft.Json",
+                         "version":  "13.0.3",
+                         "file":  "newtonsoft.json.13.0.3.nupkg",
+                         "sha256":  "872fc189e638ab1056555b03aaa38f68bcb54286e221aa646eb1129babf63c77",
+                         "bytes":  2441966
+                     },
+                     {
+                         "id":  "Tesseract",
+                         "version":  "5.2.0",
+                         "file":  "tesseract.5.2.0.nupkg",
+                         "sha256":  "202d82fc7c7d8384df7da57206d5e1f456ccdabd648c46e67cdfaa3a911d4795",
+                         "bytes":  5697774
+                     },
+                     {
+                         "id":  "xunit",
+                         "version":  "2.9.3",
+                         "file":  "xunit.2.9.3.nupkg",
+                         "sha256":  "04fae949b8e5201ecfa07fa8702baca8c0eb3198114194b3793789cc72bf23d7",
+                         "bytes":  31659
+                     },
+                     {
+                         "id":  "xunit.abstractions",
+                         "version":  "2.0.3",
+                         "file":  "xunit.abstractions.2.0.3.nupkg",
+                         "sha256":  "d03d72fc2df8880448f7a81bddb00e1bcb5c18f323c7e7cc69b4cfa727469403",
+                         "bytes":  75155
+                     },
+                     {
+                         "id":  "xunit.analyzers",
+                         "version":  "1.18.0",
+                         "file":  "xunit.analyzers.1.18.0.nupkg",
+                         "sha256":  "0ce81a98b9df8bd51ae480e6dc9566f4c68e15b4926e6ab997c8f634f3b7a9dd",
+                         "bytes":  269902
+                     },
+                     {
+                         "id":  "xunit.assert",
+                         "version":  "2.9.3",
+                         "file":  "xunit.assert.2.9.3.nupkg",
+                         "sha256":  "bc760e75ef1b775d293a6afb89301836d3e5a87cec265e31dedd430ee61d0c20",
+                         "bytes":  246078
+                     },
+                     {
+                         "id":  "xunit.core",
+                         "version":  "2.9.3",
+                         "file":  "xunit.core.2.9.3.nupkg",
+                         "sha256":  "aa4550f09c3f2d95a6c62ae43cec22af2edbbd99f722e691ceefeca761fc6a7c",
+                         "bytes":  33553
+                     },
+                     {
+                         "id":  "xunit.extensibility.core",
+                         "version":  "2.9.3",
+                         "file":  "xunit.extensibility.core.2.9.3.nupkg",
+                         "sha256":  "99ca555fe9b447b1747aff426819db6a2f60b6ee0655caa28c4b91a9ef3d0f48",
+                         "bytes":  298787
+                     },
+                     {
+                         "id":  "xunit.extensibility.execution",
+                         "version":  "2.9.3",
+                         "file":  "xunit.extensibility.execution.2.9.3.nupkg",
+                         "sha256":  "dabc4cb360ede1c01c98e14cc0fe587774693f40679a22fc71794acac5d8d23c",
+                         "bytes":  379849
+                     },
+                     {
+                         "id":  "xunit.runner.visualstudio",
+                         "version":  "3.1.1",
+                         "file":  "xunit.runner.visualstudio.3.1.1.nupkg",
+                         "sha256":  "5a5b8bff205c0a818a415a10ffd02f83e4e4cbe164ca7b684e69136ef97a3069",
+                         "bytes":  1301255
+                     }
+                 ]
+}

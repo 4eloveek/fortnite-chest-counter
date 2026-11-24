@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>FortniteChestCounter</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.2.0</Version>
+    <Description>Счётчик сундуков Fortnite по уведомлениям на экране</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../FortniteChestCounter.Core/FortniteChestCounter.Core.csproj" />
+    <PackageReference Include="Tesseract" Version="5.2.0" />
+    <Content Include="../../assets/tessdata/*.traineddata"
+             Link="tessdata/%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../assets/licenses/*.txt"
+              Link="licenses/%(Filename)%(Extension)"
+              CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../LICENSE" Link="licenses/FortniteChestCounter-MIT.txt"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../README.md" Link="README.md" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="../../THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="CheckOcrModels" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('../../assets/tessdata/eng.traineddata') Or !Exists('../../assets/tessdata/rus.traineddata')"
+           Text="OCR models are missing. Run tools/build.ps1 to download them." />
+  </Target>
+</Project>
