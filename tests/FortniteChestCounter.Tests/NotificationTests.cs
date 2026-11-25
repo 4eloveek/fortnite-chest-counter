@@ -99,9 +99,9 @@ public sealed class NotificationTests
         int count = 0;
         for (int frame = 0; frame < awards.Length; frame++)
         {
-            bool present = NotificationClassifier.Find(
-                [Line(awards[frame], y: 70), Line("СУНДУК")], requireXp: true) is not null;
-            if (gate.Observe(present, At(frame * 200))) count++;
+            ChestNotification? notification = NotificationClassifier.Find(
+                [Line(awards[frame], y: 70), Line("СУНДУК")], requireXp: true);
+            if (gate.Observe(notification is not null, notification?.Signature, At(frame * 200))) count++;
         }
         Assert.Equal(1, count);
     }
@@ -157,7 +157,7 @@ public sealed class NotificationTests
     public void CountsOneLongNotificationOnlyOnce()
     {
         var gate = new NotificationGate();
-        int count = Enumerable.Range(0, 100).Count(frame => gate.Observe(true, At(frame * 200)));
+        int count = Enumerable.Range(0, 100).Count(frame => gate.Observe(true, First, At(frame * 200)));
         Assert.Equal(1, count);
     }
 
@@ -165,70 +165,82 @@ public sealed class NotificationTests
     public void RejectsASingleSpuriousFrame()
     {
         var gate = new NotificationGate();
-        Assert.False(gate.Observe(true, At(0)));
-        Assert.False(gate.Observe(false, At(200)));
-        Assert.False(gate.Observe(true, At(400)));
-        Assert.False(gate.Observe(false, At(600)));
+        Assert.False(gate.Observe(true, First, At(0)));
+        Assert.False(gate.Observe(false, null, At(200)));
+        Assert.False(gate.Observe(true, First, At(400)));
+        Assert.False(gate.Observe(false, null, At(600)));
     }
 
     [Fact]
-    public void OcrFlickerDoesNotDuplicateAnOpening()
+    public void OneMissedFrameDoesNotDuplicateAnOpening()
     {
         var gate = new NotificationGate();
-        Assert.False(gate.Observe(true, At(0)));
-        Assert.True(gate.Observe(true, At(200)));
-        Assert.False(gate.Observe(false, At(400)));
-        Assert.False(gate.Observe(false, At(600)));
-        Assert.False(gate.Observe(true, At(800)));
-        Assert.False(gate.Observe(true, At(2000)));
+        Assert.False(gate.Observe(true, First, At(0)));
+        Assert.True(gate.Observe(true, First, At(200)));
+        Assert.False(gate.Observe(false, null, At(400)));
+        Assert.False(gate.Observe(true, First, At(600)));
+        Assert.False(gate.Observe(true, First, At(800)));
+        Assert.False(gate.Observe(true, First, At(2000)));
+    }
+
+    [Fact]
+    public void CountsASecondNotificationAfterAShortGap()
+    {
+        var gate = new NotificationGate();
+        Assert.False(gate.Observe(true, First, At(0)));
+        Assert.True(gate.Observe(true, First, At(200)));
+        Assert.False(gate.Observe(false, null, At(400)));
+        Assert.False(gate.Observe(false, null, At(600)));
+        Assert.False(gate.Observe(true, First, At(800)));
+        Assert.True(gate.Observe(true, First, At(1000)));
     }
 
     [Fact]
     public void RearmsAfterTheNotificationActuallyDisappears()
     {
         var gate = new NotificationGate();
-        Assert.False(gate.Observe(true, At(0)));
-        Assert.True(gate.Observe(true, At(200)));
-        Assert.False(gate.Observe(false, At(400)));
-        Assert.False(gate.Observe(false, At(1400)));
-        Assert.False(gate.Observe(true, At(1600)));
-        Assert.True(gate.Observe(true, At(1800)));
+        Assert.False(gate.Observe(true, First, At(0)));
+        Assert.True(gate.Observe(true, First, At(200)));
+        Assert.False(gate.Observe(false, null, At(400)));
+        Assert.False(gate.Observe(false, null, At(1400)));
+        Assert.False(gate.Observe(true, First, At(1600)));
+        Assert.True(gate.Observe(true, First, At(1800)));
     }
 
     [Fact]
     public void EnforcesMinimumIntervalEvenWithFastRearming()
     {
         var gate = new NotificationGate(clearMs: 100);
-        gate.Observe(true, At(0));
-        Assert.True(gate.Observe(true, At(100)));
-        gate.Observe(false, At(200));
-        gate.Observe(false, At(400));
-        Assert.False(gate.Observe(true, At(500)));
-        Assert.False(gate.Observe(true, At(600)));
-        Assert.True(gate.Observe(true, At(1500)));
+        gate.Observe(true, First, At(0));
+        Assert.True(gate.Observe(true, First, At(100)));
+        gate.Observe(false, null, At(200));
+        gate.Observe(false, null, At(400));
+        Assert.False(gate.Observe(true, First, At(500)));
+        Assert.False(gate.Observe(true, First, At(600)));
+        Assert.True(gate.Observe(true, First, At(1500)));
     }
 
     [Fact]
     public void LosingFocusDoesNotRecountTheSameVisibleNotification()
     {
         var gate = new NotificationGate();
-        gate.Observe(true, At(0));
-        Assert.True(gate.Observe(true, At(200)));
-        gate.Observe(false, At(400));
+        gate.Observe(true, First, At(0));
+        Assert.True(gate.Observe(true, First, At(200)));
+        gate.Observe(false, null, At(400));
         gate.BreakObservationSequence();
-        Assert.False(gate.Observe(false, At(10000)));
-        Assert.False(gate.Observe(true, At(10200)));
-        Assert.False(gate.Observe(true, At(10400)));
+        Assert.False(gate.Observe(false, null, At(10000)));
+        Assert.False(gate.Observe(true, First, At(10200)));
+        Assert.False(gate.Observe(true, First, At(10400)));
     }
 
     [Fact]
     public void PausingDoesNotCarryOverHalfAConfirmation()
     {
         var gate = new NotificationGate();
-        Assert.False(gate.Observe(true, At(0)));
+        Assert.False(gate.Observe(true, First, At(0)));
         gate.BreakObservationSequence();
-        Assert.False(gate.Observe(true, At(10000)));
-        Assert.True(gate.Observe(true, At(10200)));
+        Assert.False(gate.Observe(true, First, At(10000)));
+        Assert.True(gate.Observe(true, First, At(10200)));
     }
 
     [Fact]
@@ -236,13 +248,107 @@ public sealed class NotificationTests
     {
         var gate = new NotificationGate();
         gate.SuppressUntilClear();
-        Assert.False(gate.Observe(true, At(0)));
-        Assert.False(gate.Observe(true, At(200)));
-        gate.Observe(false, At(400));
-        gate.Observe(false, At(1400));
-        Assert.False(gate.Observe(true, At(1600)));
-        Assert.True(gate.Observe(true, At(1800)));
+        Assert.False(gate.Observe(true, First, At(0)));
+        Assert.False(gate.Observe(true, First, At(200)));
+        gate.Observe(false, null, At(400));
+        gate.Observe(false, null, At(1400));
+        Assert.False(gate.Observe(true, First, At(1600)));
+        Assert.True(gate.Observe(true, First, At(1800)));
     }
+
+    [Fact]
+    public void ShiftedNotificationHasADifferentSignature()
+    {
+        ChestNotification? first = NotificationClassifier.Find(
+            [Line("+1 200 ОП", y: 70), Line("СУНДУК", y: 100)], requireXp: true);
+        ChestNotification? shifted = NotificationClassifier.Find(
+            [Line("+1 200 ОП", y: 102), Line("СУНДУК", y: 132)], requireXp: true);
+        Assert.NotNull(first);
+        Assert.NotNull(shifted);
+        Assert.NotEqual(first.Signature, shifted.Signature);
+    }
+
+    [Fact]
+    public void ContainsChestLabelSeesTheLabelWithoutAnAward()
+    {
+        Assert.True(NotificationClassifier.ContainsChestLabel([Line("СУНДУК")]));
+        Assert.True(NotificationClassifier.ContainsChestLabel([Line("CHEST")]));
+        Assert.False(NotificationClassifier.ContainsChestLabel([Line("+1 200 ОП", y: 70)]));
+        Assert.False(NotificationClassifier.ContainsChestLabel([Line("ОБЫЩИТЕ СУНДУК")]));
+    }
+
+    [Fact]
+    public void CountsConsecutiveNotificationsThatReplaceEachOther()
+    {
+        var gate = new NotificationGate();
+        int count = 0;
+        for (int frame = 0; frame < 20; frame++)
+        {
+            if (gate.Observe(true, First, At(frame * 200))) count++;
+        }
+
+        for (int frame = 20; frame < 30; frame++)
+        {
+            if (gate.Observe(true, Second, At(frame * 200))) count++;
+        }
+
+        Assert.Equal(2, count);
+    }
+
+    [Fact]
+    public void CountsANewNotificationSoonAfterThePreviousOne()
+    {
+        var gate = new NotificationGate();
+        Assert.False(gate.Observe(true, First, At(0)));
+        Assert.True(gate.Observe(true, First, At(200)));
+        Assert.False(gate.Observe(true, Second, At(600)));
+        Assert.False(gate.Observe(true, Second, At(800)));
+        Assert.True(gate.Observe(true, Second, At(1000)));
+    }
+
+    [Fact]
+    public void OneStrayDifferentReadingDoesNotCreateASecondCount()
+    {
+        var gate = new NotificationGate();
+        Assert.False(gate.Observe(true, First, At(0)));
+        Assert.True(gate.Observe(true, First, At(200)));
+        Assert.False(gate.Observe(true, Second, At(400)));
+        Assert.False(gate.Observe(true, First, At(600)));
+        Assert.False(gate.Observe(true, Second, At(800)));
+        Assert.False(gate.Observe(true, First, At(1000)));
+    }
+
+    [Fact]
+    public void LabelWithoutAnAwardDoesNotRearmTheGate()
+    {
+        var gate = new NotificationGate();
+        Assert.False(gate.Observe(true, First, At(0)));
+        Assert.True(gate.Observe(true, First, At(200)));
+        Assert.False(gate.Observe(true, null, At(400)));
+        Assert.False(gate.Observe(true, null, At(600)));
+        Assert.False(gate.Observe(true, null, At(800)));
+        Assert.False(gate.Observe(true, First, At(1000)));
+    }
+
+    [Fact]
+    public void ManualCorrectionSuppressesADifferentReadingToo()
+    {
+        var gate = new NotificationGate();
+        gate.SuppressUntilClear();
+        Assert.False(gate.Observe(true, First, At(0)));
+        Assert.False(gate.Observe(true, First, At(200)));
+        Assert.False(gate.Observe(true, Second, At(400)));
+        Assert.False(gate.Observe(true, Second, At(600)));
+        Assert.False(gate.Observe(true, Second, At(800)));
+        gate.Observe(false, null, At(1000));
+        gate.Observe(false, null, At(1200));
+        gate.Observe(false, null, At(1600));
+        Assert.False(gate.Observe(true, First, At(1800)));
+        Assert.True(gate.Observe(true, First, At(2000)));
+    }
+
+    private const string First = "СУНДУК|10|10";
+    private const string Second = "СУНДУК|10|11";
 
     private static TimeSpan At(int milliseconds) => TimeSpan.FromMilliseconds(milliseconds);
 }

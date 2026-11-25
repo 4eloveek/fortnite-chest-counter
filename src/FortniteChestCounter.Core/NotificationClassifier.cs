@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -9,10 +10,31 @@ public sealed record OcrLine(string Text, float Confidence, int X, int Y, int Wi
     public double CenterY => Y + Height / 2.0;
 }
 
-public sealed record ChestNotification(string Text, float Confidence);
+public sealed record ChestNotification(string Text, float Confidence, string Signature);
 
 public static partial class NotificationClassifier
 {
+    // The screen keeps showing a chest label while its XP line may be misread.
+    // MainForm uses this signal to distinguish a real disappearance from an OCR miss.
+    public static bool ContainsChestLabel(IReadOnlyList<OcrLine> lines)
+    {
+        foreach (OcrLine line in lines)
+        {
+            if (line.Confidence < 0.20f)
+            {
+                continue;
+            }
+
+            string text = Normalize(line.Text);
+            if (ChestWord().IsMatch(text) && !QuestWords().IsMatch(text))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static ChestNotification? Find(IReadOnlyList<OcrLine> lines, bool requireXp)
     {
         foreach (OcrLine chest in lines)
@@ -25,7 +47,7 @@ public static partial class NotificationClassifier
 
             if (!requireXp)
             {
-                return new ChestNotification(chest.Text, chest.Confidence);
+                return new ChestNotification(chest.Text, chest.Confidence, BuildSignature(chest));
             }
 
             // The award must be next to the chest label, not elsewhere on the screen.
@@ -48,11 +70,24 @@ public static partial class NotificationClassifier
 
             if (standardAward || ambiguousRussianAward)
             {
-                return new ChestNotification(nearbyText, chest.Confidence);
+                return new ChestNotification(nearbyText, chest.Confidence, BuildSignature(chest));
             }
         }
 
         return null;
+    }
+
+    // A notification's own text and screen position identify one showing. The
+    // position is quantised because OCR boxes jitter by a few pixels, while the
+    // HUD shifts a shown notification by roughly one row when a new one appears.
+    private static string BuildSignature(OcrLine chest)
+    {
+        string text = Normalize(chest.Text);
+        Match label = ChestWord().Match(text);
+        string key = label.Success ? label.Value : text;
+        long x = (long)Math.Round(chest.CenterX / 24.0, MidpointRounding.AwayFromZero);
+        long y = (long)Math.Round(chest.CenterY / 24.0, MidpointRounding.AwayFromZero);
+        return string.Create(CultureInfo.InvariantCulture, $"{key}|{x}|{y}");
     }
 
     private static string Normalize(string text) => text.Normalize(NormalizationForm.FormKC).ToUpperInvariant();

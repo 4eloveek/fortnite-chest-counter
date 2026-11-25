@@ -1,1 +1,1 @@
-7543e89afa3bdaa71e5f78cb499de363161a01c1e1455cff1ab856affc9764ac  FortniteChestCounter-v0.2.0-win-x64.exe
+65ae1046f098eec493a6a6f6303e404e286ab0cdd85e56c43f46c6c82d96d4cf  FortniteChestCounter-v0.3.0-win-x64.exe

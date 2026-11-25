@@ -12,7 +12,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>FortniteChestCounter</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <Description>Счётчик сундуков Fortnite по уведомлениям на экране</Description>
   </PropertyGroup>
   <ItemGroup>

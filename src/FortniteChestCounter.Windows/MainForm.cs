@@ -15,8 +15,10 @@ internal sealed class MainForm : Form
         public override string ToString() => Title;
     }
 
+    private const int AddChestHotkeyId = 9;
+
     private sealed record ScanReport(
-        IReadOnlyList<OcrLine>? Lines, ChestNotification? Notification, TimeSpan Time,
+        IReadOnlyList<OcrLine>? Lines, ChestNotification? Notification, bool Visible, TimeSpan Time,
         int DurationMs, bool Waiting = false, string? Error = null);
 
     private AppSettings _settings;
@@ -28,6 +30,7 @@ internal sealed class MainForm : Form
     private readonly System.Windows.Forms.Timer _statsTimer = new() { Interval = 1000 };
     private readonly List<int> _registeredHotkeys = [];
     private readonly List<Control> _configurationControls = [];
+    private readonly HotkeyCaptureButton _addKeyButton = new();
 
     private readonly Label _session = Theme.Label("0", 34, true);
     private readonly Label _today = Theme.Label("0", 28, true);
@@ -60,6 +63,7 @@ internal sealed class MainForm : Form
     private bool _closing;
     private bool _allowClose;
     private bool _loading = true;
+    private bool _addHotkeyRegistered;
     private string _overlayStatus = "Пауза";
 
     public MainForm(AppSettings settings, string settingsPath, CounterLedger ledger)
@@ -81,6 +85,12 @@ internal sealed class MainForm : Form
         _loading = false;
         RefreshAreaLabel();
         UpdateCounts();
+
+        Theme.Style(_addKeyButton);
+        _addKeyButton.Click += (_, _) => _addKeyButton.BeginCapture();
+        _addKeyButton.Captured += ApplyAddChestHotkey;
+        _addKeyButton.Cancelled += UpdateAddHotkeyButton;
+        UpdateAddHotkeyButton();
 
         _startButton.Click += async (_, _) => await ToggleRunningAsync();
         _selectButton.Click += async (_, _) => await SelectAreaAsync();
@@ -238,9 +248,10 @@ internal sealed class MainForm : Form
         Add(Flow(Theme.Label("Положение счётчика:"), _corners));
         Add(Theme.Label("Диагностика распознавания", 11, true));
         Add(_recognizedText);
-        var keys = Theme.Label("Ctrl+Alt: F8 — старт/пауза · F9 — +1 · F10 — −1 · F11 — новый матч · F12 — счётчик");
+        var keys = Theme.Label("Ctrl+Alt: F8 — старт/пауза · F9 — +1 (по умолчанию) · F10 — −1 · F11 — новый матч · F12 — счётчик");
         keys.ForeColor = Theme.Muted;
         Add(keys);
+        Add(Flow(Theme.Label("Клавиша «+1»:"), _addKeyButton));
         _hotkeyInfo.ForeColor = Theme.Muted;
         Add(_hotkeyInfo);
         var footer = Theme.Label("Матч сбрасывается кнопкой или F11. Статистика сохраняется автоматически.");
@@ -384,23 +395,24 @@ internal sealed class MainForm : Form
                 var duration = Stopwatch.StartNew();
                 if (settings.OnlyWhenFortniteActive && !NativeMethods.IsFortniteActive())
                 {
-                    progress.Report(new ScanReport(null, null, _clock.Elapsed, 0, Waiting: true));
+                    progress.Report(new ScanReport(null, null, false, _clock.Elapsed, 0, Waiting: true));
                     await Task.Delay(Math.Max(300, settings.ScanIntervalMs), token);
                     continue;
                 }
 
                 using Bitmap image = ScreenCapture.Capture(new Rectangle(area.X, area.Y, area.Width, area.Height));
-                (IReadOnlyList<OcrLine> lines, ChestNotification? notification, _) =
+                (IReadOnlyList<OcrLine> lines, ChestNotification? notification, bool visible, _) =
                     reader.ReadNotification(image, settings.RequireXp);
                 token.ThrowIfCancellationRequested();
-                progress.Report(new ScanReport(lines, notification, _clock.Elapsed, (int)duration.ElapsedMilliseconds));
+                progress.Report(new ScanReport(lines, notification, visible, _clock.Elapsed,
+                    (int)duration.ElapsedMilliseconds));
                 await Task.Delay(Math.Max(50, settings.ScanIntervalMs - (int)duration.ElapsedMilliseconds), token);
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            progress.Report(new ScanReport(null, null, _clock.Elapsed, 0,
+            progress.Report(new ScanReport(null, null, false, _clock.Elapsed, 0,
                 Error: $"{ex.Message}\n\nПроверьте, что ZIP полностью распакован: рядом нужны папки tessdata и x64. " +
                     "Если не загружаются DLL OCR, установите Microsoft Visual C++ Redistributable x64 (2015–2022 или новее)."));
         }
@@ -438,7 +450,7 @@ internal sealed class MainForm : Form
         bool present = report.Notification is not null;
         SetStatus(present ? $"Уведомление о сундуке распознано · OCR {report.DurationMs} мс"
             : $"Распознавание работает · OCR {report.DurationMs} мс", "Работает");
-        if (_gate.Observe(present, report.Time))
+        if (_gate.Observe(report.Visible, report.Notification?.Signature, report.Time))
         {
             await ChangeCountAsync(() =>
             {
@@ -620,20 +632,38 @@ internal sealed class MainForm : Form
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
+        _registeredHotkeys.Clear();
         NativeMethods.ExcludeFromCapture(Handle);
         var unavailable = new List<string>();
-        for (int id = 7; id <= 12; id++)
+        (int Id, string Label, uint Key)[] fixedHotkeys =
+        [
+            (7, "Ctrl+Alt+F7", (uint)Keys.F7),
+            (8, "Ctrl+Alt+F8", (uint)Keys.F8),
+            (10, "Ctrl+Alt+F10", (uint)Keys.F10),
+            (11, "Ctrl+Alt+F11", (uint)Keys.F11),
+            (12, "Ctrl+Alt+F12", (uint)Keys.F12)
+        ];
+        foreach (var hotkey in fixedHotkeys)
         {
-            if (NativeMethods.RegisterHotKey(Handle, id, NativeMethods.HotkeyModifiers, (uint)(Keys.F7 + id - 7)))
+            if (NativeMethods.RegisterHotKey(Handle, hotkey.Id, NativeMethods.HotkeyModifiers, hotkey.Key))
             {
-                _registeredHotkeys.Add(id);
+                _registeredHotkeys.Add(hotkey.Id);
             }
-            else unavailable.Add($"Ctrl+Alt+F{id}");
+            else
+            {
+                unavailable.Add(hotkey.Label);
+            }
+        }
+
+        if (!RegisterAddChestHotkey(_settings.AddChestHotkey))
+        {
+            unavailable.Add(FormatHotkey(_settings.AddChestHotkey));
         }
 
         _hotkeyInfo.Text = unavailable.Count > 0
             ? "Заняты горячие клавиши: " + string.Join(", ", unavailable) + ". Используйте кнопки окна."
             : "Горячие клавиши активны, в том числе когда окно счётчика свёрнуто.";
+        UpdateAddHotkeyButton();
     }
 
     protected override void OnHandleDestroyed(EventArgs e)
@@ -644,6 +674,12 @@ internal sealed class MainForm : Form
         }
 
         _registeredHotkeys.Clear();
+        if (_addHotkeyRegistered)
+        {
+            NativeMethods.UnregisterHotKey(Handle, AddChestHotkeyId);
+            _addHotkeyRegistered = false;
+        }
+
         base.OnHandleDestroyed(e);
     }
 
@@ -676,6 +712,140 @@ internal sealed class MainForm : Form
             case 11: await NewMatchAsync(); break;
             case 12: ToggleOverlay(); break;
         }
+    }
+
+    private bool RegisterAddChestHotkey(HotkeyBinding binding)
+    {
+        if (!IsHandleCreated)
+        {
+            _addHotkeyRegistered = false;
+            return false;
+        }
+
+        if (_addHotkeyRegistered)
+        {
+            NativeMethods.UnregisterHotKey(Handle, AddChestHotkeyId);
+            _addHotkeyRegistered = false;
+        }
+
+        _addHotkeyRegistered = NativeMethods.RegisterHotKey(Handle, AddChestHotkeyId,
+            ToHotkeyModifiers(binding.Modifiers), (uint)binding.Key);
+        return _addHotkeyRegistered;
+    }
+
+    private void ApplyAddChestHotkey(HotkeyBinding binding)
+    {
+        if (!binding.IsValid)
+        {
+            MessageBox.Show(this, "Эту клавишу нельзя назначить. Выберите обычную клавишу, например F8 или K.",
+                Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            UpdateAddHotkeyButton();
+            return;
+        }
+
+        if (IsReservedHotkey(binding))
+        {
+            MessageBox.Show(this, $"Сочетание {FormatHotkey(binding)} уже используется программой. Выберите другое.",
+                Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            UpdateAddHotkeyButton();
+            return;
+        }
+
+        if (binding.Modifiers == 0)
+        {
+            DialogResult answer = MessageBox.Show(this,
+                $"Клавиша {FormatHotkey(binding)} без Ctrl, Alt или Shift будет перехватываться во всех программах, включая чат и меню. Продолжить?",
+                Text, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (answer != DialogResult.Yes)
+            {
+                UpdateAddHotkeyButton();
+                return;
+            }
+        }
+
+        HotkeyBinding previous = _settings.AddChestHotkey;
+        if (binding == previous)
+        {
+            UpdateAddHotkeyButton();
+            return;
+        }
+
+        if (IsHandleCreated && !RegisterAddChestHotkey(binding))
+        {
+            RegisterAddChestHotkey(previous);
+            MessageBox.Show(this, $"Не удалось назначить {FormatHotkey(binding)}: сочетание уже занято другой программой.",
+                Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            UpdateAddHotkeyButton();
+            return;
+        }
+
+        if (!SaveSettings(_settings with { AddChestHotkey = binding }))
+        {
+            RegisterAddChestHotkey(previous);
+            UpdateAddHotkeyButton();
+            return;
+        }
+
+        UpdateAddHotkeyButton();
+        _hotkeyInfo.Text = $"Клавиша «+1»: {FormatHotkey(binding)}. Горячие клавиши работают и когда окно свёрнуто.";
+    }
+
+    private void UpdateAddHotkeyButton()
+    {
+        _addKeyButton.Text = $"{FormatHotkey(_settings.AddChestHotkey)} · изменить";
+    }
+
+    private static bool IsReservedHotkey(HotkeyBinding binding)
+    {
+        if (binding.Modifiers != (HotkeyBinding.Control | HotkeyBinding.Alt))
+        {
+            return false;
+        }
+
+        return (Keys)binding.Key is Keys.F7 or Keys.F8 or Keys.F10 or Keys.F11 or Keys.F12;
+    }
+
+    private static uint ToHotkeyModifiers(int modifiers)
+    {
+        uint result = 0x4000; // MOD_NOREPEAT
+        if ((modifiers & HotkeyBinding.Alt) != 0) result |= 0x0001;
+        if ((modifiers & HotkeyBinding.Control) != 0) result |= 0x0002;
+        if ((modifiers & HotkeyBinding.Shift) != 0) result |= 0x0004;
+        if ((modifiers & HotkeyBinding.Win) != 0) result |= 0x0008;
+        return result;
+    }
+
+    private static string FormatHotkey(HotkeyBinding binding)
+    {
+        var parts = new List<string>();
+        if ((binding.Modifiers & HotkeyBinding.Control) != 0) parts.Add("Ctrl");
+        if ((binding.Modifiers & HotkeyBinding.Alt) != 0) parts.Add("Alt");
+        if ((binding.Modifiers & HotkeyBinding.Shift) != 0) parts.Add("Shift");
+        if ((binding.Modifiers & HotkeyBinding.Win) != 0) parts.Add("Win");
+        parts.Add(FormatKey((Keys)binding.Key));
+        return string.Join("+", parts);
+    }
+
+    private static string FormatKey(Keys key)
+    {
+        if (key is >= Keys.D0 and <= Keys.D9) return ((char)('0' + (key - Keys.D0))).ToString();
+        if (key is >= Keys.A and <= Keys.Z) return key.ToString();
+        if (key is >= Keys.NumPad0 and <= Keys.NumPad9) return $"Num {key - Keys.NumPad0}";
+        return key switch
+        {
+            Keys.Oemplus => "+",
+            Keys.OemMinus => "-",
+            Keys.Oemcomma => ",",
+            Keys.OemPeriod => ".",
+            Keys.OemQuestion => "/",
+            Keys.OemSemicolon => ";",
+            Keys.OemQuotes => "'",
+            Keys.OemOpenBrackets => "[",
+            Keys.OemCloseBrackets => "]",
+            Keys.OemPipe => "\\",
+            Keys.Oemtilde => "`",
+            _ => key.ToString()
+        };
     }
 
     private async void OnClosing(object? sender, FormClosingEventArgs e)

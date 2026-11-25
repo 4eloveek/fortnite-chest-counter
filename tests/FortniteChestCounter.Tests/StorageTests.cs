@@ -95,5 +95,47 @@ public sealed class StorageTests : IDisposable
         Assert.Equal(settings, restored);
     }
 
+    [Fact]
+    public void SettingsRoundTripPreservesACustomAddChestHotkey()
+    {
+        string path = Path.Combine(_directory, "settings.json");
+        var settings = new AppSettings
+        {
+            AddChestHotkey = new HotkeyBinding(HotkeyBinding.Control | HotkeyBinding.Shift, 0x4B)
+        };
+        JsonFile.Write(path, settings);
+        AppSettings restored = JsonFile.Read<AppSettings>(path)!;
+        restored.Validate();
+        Assert.Equal(settings.AddChestHotkey, restored.AddChestHotkey);
+    }
+
+    [Fact]
+    public void OldSettingsWithoutAHotkeyUseTheDefaultAddChestHotkey()
+    {
+        string path = Path.Combine(_directory, "settings.json");
+        File.WriteAllText(path, "{ \"language\": \"eng\" }");
+        AppSettings restored = JsonFile.Read<AppSettings>(path)!;
+        restored.Validate();
+        Assert.Equal(HotkeyBinding.DefaultAddChest, restored.AddChestHotkey);
+    }
+
+    [Theory]
+    [InlineData(HotkeyBinding.Control, 0x11)]
+    [InlineData(0, 0)]
+    [InlineData(HotkeyBinding.Control, 0xFF)]
+    [InlineData(0x10, 0x41)]
+    public void RejectsInvalidAddChestHotkeys(int modifiers, int key)
+    {
+        var settings = new AppSettings { AddChestHotkey = new HotkeyBinding(modifiers, key) };
+        Assert.Throws<InvalidDataException>(settings.Validate);
+    }
+
+    [Fact]
+    public void DefaultAddChestHotkeyIsValid()
+    {
+        Assert.True(HotkeyBinding.DefaultAddChest.IsValid);
+        HotkeyBinding.DefaultAddChest.Validate();
+    }
+
     public void Dispose() => Directory.Delete(_directory, recursive: true);
 }

@@ -18,19 +18,25 @@ internal static class Theme
         Margin = new Padding(0, 4, 0, 5)
     };
 
-    public static Button Button(string text, bool accent = false) => new()
+    public static Button Button(string text, bool accent = false)
     {
-        Text = text,
-        AutoSize = true,
-        AutoSizeMode = AutoSizeMode.GrowAndShrink,
-        Padding = new Padding(10, 5, 10, 5),
-        FlatStyle = FlatStyle.Flat,
-        BackColor = accent ? Accent : Card,
-        ForeColor = accent ? Background : Foreground,
-        Font = new Font("Segoe UI", 10, FontStyle.Bold),
-        Cursor = Cursors.Hand,
-        Margin = new Padding(0, 4, 8, 4)
-    };
+        var button = new Button { Text = text };
+        Style(button, accent);
+        return button;
+    }
+
+    public static void Style(Button button, bool accent = false)
+    {
+        button.AutoSize = true;
+        button.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        button.Padding = new Padding(10, 5, 10, 5);
+        button.FlatStyle = FlatStyle.Flat;
+        button.BackColor = accent ? Accent : Card;
+        button.ForeColor = accent ? Background : Foreground;
+        button.Font = new Font("Segoe UI", 10, FontStyle.Bold);
+        button.Cursor = Cursors.Hand;
+        button.Margin = new Padding(0, 4, 8, 4);
+    }
 
     public static ComboBox ComboBox() => new()
     {

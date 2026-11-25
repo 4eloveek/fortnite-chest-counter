@@ -24,14 +24,17 @@ public sealed record AppSettings
     public bool OnlyWhenFortniteActive { get; init; } = true;
     public bool ShowOverlay { get; init; } = true;
     public OverlayCorner OverlayCorner { get; init; } = OverlayCorner.TopLeft;
+    public HotkeyBinding AddChestHotkey { get; init; } = HotkeyBinding.DefaultAddChest;
 
     public void Validate()
     {
         if (MonitorDeviceName is null || Language is not ("rus" or "eng" or "rus+eng") ||
             ScanIntervalMs is < 100 or > 2000 || (Area is not null && !Area.IsValid) ||
-            !Enum.IsDefined(OverlayCorner))
+            !Enum.IsDefined(OverlayCorner) || AddChestHotkey is null)
         {
             throw new InvalidDataException("Некорректные настройки. Проверьте settings.json.");
         }
+
+        AddChestHotkey.Validate();
     }
 }
