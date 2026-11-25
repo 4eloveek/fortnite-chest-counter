@@ -31,6 +31,7 @@ Windows PowerShell 5.1, которым пользуются CMD-файлы, вх
 в 0.3.0 — настройка клавиши «+1» и короткая пауза между уведомлениями.
 
 Отдельный однофайловый релиз: `release/v0.3.0-win-x64/FortniteChestCounter-v0.3.0-win-x64.exe`.
+Опубликованный выпуск: https://github.com/4eloveek/fortnite-chest-counter/releases/tag/v0.3.0.
 Для распространения нужен только этот EXE. Как загрузить его в GitHub Releases
 и повторить сборку: [docs/GITHUB-RELEASE.md](docs/GITHUB-RELEASE.md).
 
