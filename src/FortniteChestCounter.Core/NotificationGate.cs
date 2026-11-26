@@ -22,12 +22,12 @@ public sealed class NotificationGate
     private readonly TimeSpan _minimumInterval;
 
     private int _hits;
-    private string? _pendingSignature;
+    private ChestSignature? _pendingSignature;
     private int _changeHits;
-    private string? _changeSignature;
+    private ChestSignature? _changeSignature;
     private bool _latched;
     private bool _suppressed;
-    private string? _latchedSignature;
+    private ChestSignature? _latchedSignature;
     private int _clearHits;
     private TimeSpan? _clearSince;
     private TimeSpan? _lastCount;
@@ -58,7 +58,7 @@ public sealed class NotificationGate
     /// on screen (even if its award line was misread); <paramref name="signature"/>
     /// identifies a fully recognised notification, or is null when none is accepted.
     /// </summary>
-    public bool Observe(bool visible, string? signature, TimeSpan now)
+    public bool Observe(bool visible, ChestSignature? signature, TimeSpan now)
     {
         if (_lastObservation is { } previous && now < previous)
         {
@@ -103,7 +103,7 @@ public sealed class NotificationGate
 
         if (!_latched)
         {
-            if (_pendingSignature == signature)
+            if (_pendingSignature is { } pending && pending.Matches(signature))
             {
                 _hits++;
             }
@@ -128,14 +128,14 @@ public sealed class NotificationGate
             return false;
         }
 
-        if (signature == _latchedSignature)
+        if (_latchedSignature is { } latched && latched.Matches(signature))
         {
             _changeHits = 0;
             _changeSignature = null;
             return false;
         }
 
-        if (_changeSignature == signature)
+        if (_changeSignature is { } change && change.Matches(signature))
         {
             _changeHits++;
         }
@@ -179,7 +179,7 @@ public sealed class NotificationGate
         _clearSince = null;
     }
 
-    private void Count(string signature, TimeSpan now)
+    private void Count(ChestSignature signature, TimeSpan now)
     {
         _latched = true;
         _suppressed = false;

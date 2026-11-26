@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -10,7 +9,21 @@ public sealed record OcrLine(string Text, float Confidence, int X, int Y, int Wi
     public double CenterY => Y + Height / 2.0;
 }
 
-public sealed record ChestNotification(string Text, float Confidence, string Signature);
+public sealed record ChestNotification(string Text, float Confidence, ChestSignature Signature);
+
+/// <summary>
+/// Identifies one showing of a chest label: its canonical word and its centre on
+/// screen. OCR boxes jitter by a few pixels from scan to scan, so two readings of
+/// the same showing match within <see cref="Tolerance"/>; a HUD row shift or a new
+/// showing moves the label by a full row and does not match.
+/// </summary>
+public sealed record ChestSignature(string Label, double X, double Y)
+{
+    public const double Tolerance = 12;
+
+    public bool Matches(ChestSignature other) =>
+        Label == other.Label && Math.Abs(X - other.X) <= Tolerance && Math.Abs(Y - other.Y) <= Tolerance;
+}
 
 public static partial class NotificationClassifier
 {
@@ -77,17 +90,11 @@ public static partial class NotificationClassifier
         return null;
     }
 
-    // A notification's own text and screen position identify one showing. The
-    // position is quantised because OCR boxes jitter by a few pixels, while the
-    // HUD shifts a shown notification by roughly one row when a new one appears.
-    private static string BuildSignature(OcrLine chest)
+    private static ChestSignature BuildSignature(OcrLine chest)
     {
         string text = Normalize(chest.Text);
         Match label = ChestWord().Match(text);
-        string key = label.Success ? label.Value : text;
-        long x = (long)Math.Round(chest.CenterX / 24.0, MidpointRounding.AwayFromZero);
-        long y = (long)Math.Round(chest.CenterY / 24.0, MidpointRounding.AwayFromZero);
-        return string.Create(CultureInfo.InvariantCulture, $"{key}|{x}|{y}");
+        return new ChestSignature(label.Success ? label.Value : text, chest.CenterX, chest.CenterY);
     }
 
     private static string Normalize(string text) => text.Normalize(NormalizationForm.FormKC).ToUpperInvariant();

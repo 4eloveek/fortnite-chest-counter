@@ -27,25 +27,27 @@ internal sealed class OcrReader : IDisposable
         return ReadPrepared(prepared, PageSegMode.SparseText);
     }
 
-    public (IReadOnlyList<OcrLine> Lines, ChestNotification? Notification, string Mode) ReadNotification(
-        Bitmap source, bool requireXp)
+    public (IReadOnlyList<OcrLine> Lines, ChestNotification? Notification, bool Visible, string Mode)
+        ReadNotification(Bitmap source, bool requireXp)
     {
         using Bitmap prepared = Prepare(source, _brightTextMask);
         IReadOnlyList<OcrLine> sparseLines = ReadPrepared(prepared, PageSegMode.SparseText);
+        bool sparseVisible = NotificationClassifier.ContainsChestLabel(sparseLines);
         ChestNotification? sparseNotification = NotificationClassifier.Find(sparseLines, requireXp);
         if (sparseNotification is not null)
         {
-            return (sparseLines, sparseNotification, "SparseText");
+            return (sparseLines, sparseNotification, true, "SparseText");
         }
 
         // Live Fortnite frames can lose the smaller bold caption in SparseText.
         // Evaluate a second complete reading of the same frame, never stitching
         // XP from one pass to a chest label from another pass.
         IReadOnlyList<OcrLine> blockLines = ReadPrepared(prepared, PageSegMode.SingleBlock);
+        bool blockVisible = NotificationClassifier.ContainsChestLabel(blockLines);
         ChestNotification? blockNotification = NotificationClassifier.Find(blockLines, requireXp);
         return blockNotification is not null
-            ? (blockLines, blockNotification, "SingleBlock")
-            : (sparseLines, null, "SparseText + SingleBlock (no match)");
+            ? (blockLines, blockNotification, true, "SingleBlock")
+            : (sparseLines, null, sparseVisible || blockVisible, "SparseText + SingleBlock (no match)");
     }
 
     private IReadOnlyList<OcrLine> ReadPrepared(Bitmap prepared, PageSegMode mode)

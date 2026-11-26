@@ -257,15 +257,38 @@ public sealed class NotificationTests
     }
 
     [Fact]
-    public void ShiftedNotificationHasADifferentSignature()
+    public void JitterAcrossAGridLineKeepsTheSameSignature()
+    {
+        ChestNotification? steady = NotificationClassifier.Find(
+            [Line("+1 200 ОП", y: 70), Line("СУНДУК", y: 95)], requireXp: true);
+        ChestNotification? jittered = NotificationClassifier.Find(
+            [Line("+1 200 ОП", y: 70), Line("СУНДУК", y: 96)], requireXp: true);
+        Assert.NotNull(steady);
+        Assert.NotNull(jittered);
+        Assert.True(steady.Signature.Matches(jittered.Signature));
+    }
+
+    [Fact]
+    public void RowShiftedNotificationHasADifferentSignature()
     {
         ChestNotification? first = NotificationClassifier.Find(
             [Line("+1 200 ОП", y: 70), Line("СУНДУК", y: 100)], requireXp: true);
         ChestNotification? shifted = NotificationClassifier.Find(
-            [Line("+1 200 ОП", y: 102), Line("СУНДУК", y: 132)], requireXp: true);
+            [Line("+1 200 ОП", y: 94), Line("СУНДУК", y: 124)], requireXp: true);
         Assert.NotNull(first);
         Assert.NotNull(shifted);
-        Assert.NotEqual(first.Signature, shifted.Signature);
+        Assert.False(first.Signature.Matches(shifted.Signature));
+    }
+
+    [Fact]
+    public void JitterAcrossAGridLineStillCountsASingleChest()
+    {
+        var gate = new NotificationGate();
+        var low = new ChestSignature("СУНДУК", 10, 107.5);
+        var high = new ChestSignature("СУНДУК", 10, 108.5);
+        int count = Enumerable.Range(0, 10).Count(frame =>
+            gate.Observe(true, frame % 2 == 0 ? low : high, At(frame * 200)));
+        Assert.Equal(1, count);
     }
 
     [Fact]
@@ -347,8 +370,8 @@ public sealed class NotificationTests
         Assert.True(gate.Observe(true, First, At(2000)));
     }
 
-    private const string First = "СУНДУК|10|10";
-    private const string Second = "СУНДУК|10|11";
+    private static readonly ChestSignature First = new("СУНДУК", 10, 10);
+    private static readonly ChestSignature Second = new("СУНДУК", 10, 34);
 
     private static TimeSpan At(int milliseconds) => TimeSpan.FromMilliseconds(milliseconds);
 }
